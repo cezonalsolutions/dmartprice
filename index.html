@@ -1,0 +1,945 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>CEZOO Grocery Price Dashboard</title>
+<link rel="stylesheet"
+href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    :root{
+      --green:#16a34a;
+      --green-dark:#12813c;
+      --green-soft:#eaf8ef;
+      --red:#dc2626;
+      --text:#182230;
+      --muted:#667085;
+      --line:#e6e9ed;
+      --white:#ffffff;
+      --page:#f4f7f5;
+      --blue:#2563eb;
+    }
+
+    *{
+      box-sizing:border-box;
+    }
+
+    html,body{
+      margin:0;
+      width:100%;
+      overflow-x:hidden;
+      font-family:Arial,sans-serif;
+      background:var(--page);
+      color:var(--text);
+    }
+
+    .topbar{
+      position:sticky;
+      top:0;
+      z-index:20;
+      background:linear-gradient(135deg,#129447,#19b65b);
+      color:#fff;
+      padding:14px;
+      box-shadow:0 4px 18px rgba(17,148,70,.22);
+    }
+
+    .topbar-inner{
+      max-width:900px;
+      margin:auto;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+    }
+
+    .brand{
+      min-width:0;
+    }
+
+    .brand h1{
+      margin:0;
+      font-size:19px;
+      line-height:1.15;
+    }
+
+    .brand p{
+      margin:4px 0 0;
+      font-size:12px;
+      opacity:.9;
+    }
+
+    .refresh-btn{
+      flex:0 0 auto;
+      border:1px solid rgba(255,255,255,.35);
+      background:rgba(255,255,255,.17);
+      color:#fff;
+      border-radius:10px;
+      min-height:40px;
+      padding:8px 12px;
+      font-weight:700;
+      cursor:pointer;
+    }
+
+    .page{
+      width:100%;
+      max-width:900px;
+      margin:auto;
+      padding:12px;
+    }
+
+    .stats{
+      display:grid;
+      grid-template-columns:repeat(3,1fr);
+      gap:8px;
+      margin-bottom:12px;
+    }
+
+    .stat{
+      background:#fff;
+      border:1px solid var(--line);
+      border-radius:12px;
+      padding:11px 8px;
+      text-align:center;
+      box-shadow:0 5px 18px rgba(16,24,40,.05);
+    }
+
+    .stat span{
+      display:block;
+      font-size:11px;
+      color:var(--muted);
+      margin-bottom:4px;
+    }
+
+    .stat strong{
+      font-size:20px;
+    }
+
+    .toolbar{
+      display:grid;
+      grid-template-columns:1fr;
+      gap:8px;
+      margin-bottom:12px;
+    }
+
+    .search,
+    .filter{
+      width:100%;
+      border:1px solid #d0d5dd;
+      background:#fff;
+      border-radius:11px;
+      padding:12px;
+      font-size:14px;
+      outline:none;
+    }
+
+    .search:focus,
+    .filter:focus{
+      border-color:var(--green);
+      box-shadow:0 0 0 3px rgba(22,163,74,.1);
+    }
+
+    .product-list{
+      display:grid;
+      grid-template-columns:1fr;
+      gap:12px;
+      width:100%;
+    }
+
+    .product-card{
+      width:100%;
+      background:#fff;
+      border:1px solid var(--line);
+      border-radius:15px;
+      padding:12px;
+      box-shadow:0 7px 22px rgba(16,24,40,.06);
+      overflow:hidden;
+    }
+
+    .product-head{
+      display:grid;
+      grid-template-columns:74px minmax(0,1fr);
+      gap:12px;
+      align-items:center;
+      margin-bottom:12px;
+    }
+
+    .image-box{
+      width:74px;
+      height:74px;
+      border:1px solid #e3e7e5;
+      border-radius:12px;
+      overflow:hidden;
+      background:#f1f4f2;
+      position:relative;
+    }
+
+    .product-image{
+      width:100%;
+      height:100%;
+      object-fit:contain;
+      display:block;
+      background:#fff;
+      opacity:0;
+      transition:opacity .2s ease;
+    }
+
+    .product-image.loaded{
+      opacity:1;
+    }
+
+    .image-placeholder{
+      position:absolute;
+      inset:0;
+      display:grid;
+      place-items:center;
+      font-size:10px;
+      color:#98a2b3;
+    }
+
+    .product-info{
+      min-width:0;
+    }
+
+    .product-id{
+      display:inline-block;
+      font-size:11px;
+      color:#475467;
+      background:#f2f4f7;
+      padding:4px 7px;
+      border-radius:999px;
+      margin-bottom:5px;
+      font-weight:700;
+    }
+
+    .product-name{
+      margin:0;
+      font-size:16px;
+      line-height:1.3;
+      font-weight:800;
+      overflow-wrap:anywhere;
+    }
+
+    .product-telugu{
+      margin:4px 0 0;
+      font-size:14px;
+      color:#475467;
+      overflow-wrap:anywhere;
+    }
+
+    .meta-grid{
+      display:grid;
+      grid-template-columns:repeat(2,minmax(0,1fr));
+      gap:8px;
+      margin-bottom:12px;
+    }
+
+    .meta-item{
+      min-width:0;
+      border:1px solid #edf0f2;
+      background:#fafbfb;
+      border-radius:10px;
+      padding:9px;
+    }
+
+    .meta-item span{
+      display:block;
+      font-size:10px;
+      text-transform:uppercase;
+      color:#98a2b3;
+      margin-bottom:4px;
+      letter-spacing:.35px;
+    }
+
+    .meta-item strong{
+      display:block;
+      font-size:13px;
+      color:#344054;
+      overflow-wrap:anywhere;
+    }
+
+    .price-grid{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:8px;
+      margin-bottom:10px;
+    }
+
+    .field label{
+      display:block;
+      margin-bottom:5px;
+      font-size:11px;
+      color:#475467;
+      font-weight:700;
+    }
+
+    .price-input{
+      width:100%;
+      min-width:0;
+      border:1px solid #d0d5dd;
+      border-radius:10px;
+      padding:11px 9px;
+      font-size:15px;
+      font-weight:700;
+      outline:none;
+      background:#fff;
+    }
+
+    .price-input:focus{
+      border-color:var(--blue);
+      box-shadow:0 0 0 3px rgba(37,99,235,.1);
+    }
+
+    .price-input.invalid{
+      border-color:var(--red);
+      background:#fff7f7;
+    }
+
+    .action-row{
+      display:flex;
+      align-items:center;
+      justify-content:flex-end;
+      gap:8px;
+      min-height:42px;
+    }
+
+    .save-btn{
+      width:100%;
+      min-height:42px;
+      border:0;
+      border-radius:10px;
+      background:var(--green);
+      color:#fff;
+      font-size:14px;
+      font-weight:800;
+      cursor:pointer;
+    }
+
+    .save-btn:disabled{
+      opacity:.65;
+      cursor:not-allowed;
+    }
+
+    .saved-mark{
+      width:100%;
+      min-height:42px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap:7px;
+      border-radius:10px;
+      color:var(--green-dark);
+      background:var(--green-soft);
+      font-weight:800;
+    }
+
+    .status-text{
+      display:block;
+      min-height:16px;
+      margin-top:5px;
+      font-size:11px;
+      color:var(--red);
+    }
+
+    .loading,
+    .empty,
+    .error-box{
+      background:#fff;
+      border:1px solid var(--line);
+      border-radius:14px;
+      padding:40px 20px;
+      text-align:center;
+      color:var(--muted);
+    }
+
+    .error-box{
+      color:var(--red);
+    }
+
+    .spinner{
+      width:26px;
+      height:26px;
+      margin:0 auto 10px;
+      border:3px solid #dfe7e2;
+      border-top-color:var(--green);
+      border-radius:50%;
+      animation:spin .75s linear infinite;
+    }
+
+    @keyframes spin{
+      to{transform:rotate(360deg);}
+    }
+
+    .toast{
+      position:fixed;
+      left:12px;
+      right:12px;
+      bottom:12px;
+      z-index:100;
+      max-width:500px;
+      margin:auto;
+      background:#1f2937;
+      color:#fff;
+      border-radius:11px;
+      padding:13px 15px;
+      text-align:center;
+      font-weight:700;
+      opacity:0;
+      transform:translateY(12px);
+      pointer-events:none;
+      transition:.22s;
+    }
+
+    .toast.show{
+      opacity:1;
+      transform:translateY(0);
+    }
+
+    .toast.success{
+      background:var(--green-dark);
+    }
+
+    .toast.error{
+      background:var(--red);
+    }
+
+    @media(min-width:700px){
+      .page{
+        padding:18px;
+      }
+
+      .toolbar{
+        grid-template-columns:1fr 200px;
+      }
+
+      .product-list{
+        grid-template-columns:repeat(2,minmax(0,1fr));
+      }
+    }
+
+    @media(max-width:370px){
+      .stats{
+        grid-template-columns:1fr;
+      }
+
+      .price-grid{
+        grid-template-columns:1fr;
+      }
+
+      .product-head{
+        grid-template-columns:64px minmax(0,1fr);
+      }
+
+      .image-box{
+        width:64px;
+        height:64px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">
+        <h1>CEZOO Price Dashboard</h1>
+        <p>DMart price management</p>
+      </div>
+<button class="refresh-btn" id="refreshBtn">
+    <i class="fa-solid fa-rotate-right"></i>
+</button>    </div>
+  </header>
+
+  <main class="page">
+    <section class="stats">
+      <div class="stat">
+        <span>Total</span>
+        <strong id="totalProducts">0</strong>
+      </div>
+      <div class="stat">
+        <span>Completed</span>
+        <strong id="completedProducts">0</strong>
+      </div>
+      <div class="stat">
+        <span>Pending</span>
+        <strong id="pendingProducts">0</strong>
+      </div>
+    </section>
+
+    <section class="toolbar">
+      <input
+        id="searchInput"
+        class="search"
+        type="search"
+        placeholder="Search product, ID or brand"
+      />
+
+      <select id="statusFilter" class="filter">
+        <option value="all">All products</option>
+        <option value="completed">Completed</option>
+        <option value="pending">Pending</option>
+      </select>
+    </section>
+
+    <section id="productList" class="product-list">
+      <div class="loading">
+        <div class="spinner"></div>
+        Loading products...
+      </div>
+    </section>
+  </main>
+
+  <div id="toast" class="toast"></div>
+
+  <script>
+    const SUPABASE_URL = "https://mglyaebackjtwbimvokm.supabase.co";
+    const SUPABASE_ANON_KEY = "sb_publishable_qMli5WhM2pMnT6_oUsFe4Q_Fzq_-YuB";
+    const TABLE_NAME = "cezoogroceries";
+    const IMAGE_CACHE_NAME = "cezoo-product-images-v1";
+
+    const { createClient } = supabase;
+    const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    const productList = document.getElementById("productList");
+    const searchInput = document.getElementById("searchInput");
+    const statusFilter = document.getElementById("statusFilter");
+    const refreshBtn = document.getElementById("refreshBtn");
+
+    let products = [];
+    let originalValues = new Map();
+
+    async function loadProducts() {
+      showLoading();
+
+      try {
+        const { data, error } = await db
+          .from(TABLE_NAME)
+          .select(`
+            id,
+            name,
+            name_telugu,
+            quantity,
+            unit,
+            image1,
+            brand,
+            dmart_original_price,
+            dmart_discount_price
+          `)
+          .order("id", { ascending: true });
+
+        if (error) throw error;
+
+        products = data || [];
+        originalValues.clear();
+
+        products.forEach(product => {
+          originalValues.set(String(product.id), {
+            original: normalizePrice(product.dmart_original_price),
+            discount: normalizePrice(product.dmart_discount_price)
+          });
+        });
+
+        updateSummary();
+        renderProducts();
+      } catch (error) {
+        console.error(error);
+        productList.innerHTML = `
+          <div class="error-box">
+            <strong>Unable to load products</strong><br><br>
+            ${escapeHtml(error.message || "Unknown error")}
+          </div>
+        `;
+        showToast("Unable to load products", "error");
+      }
+    }
+
+    function renderProducts() {
+      const searchTerm = searchInput.value.trim().toLowerCase();
+      const filter = statusFilter.value;
+
+      const filtered = products.filter(product => {
+        const text = [
+          product.id,
+          product.name,
+          product.name_telugu,
+          product.brand,
+          product.quantity,
+          product.unit
+        ].join(" ").toLowerCase();
+
+        const completed =
+          isValidPrice(product.dmart_original_price) &&
+          isValidPrice(product.dmart_discount_price);
+
+        return text.includes(searchTerm) &&
+          (
+            filter === "all" ||
+            (filter === "completed" && completed) ||
+            (filter === "pending" && !completed)
+          );
+      });
+
+      if (!filtered.length) {
+        productList.innerHTML = `<div class="empty">No matching products found.</div>`;
+        return;
+      }
+
+      productList.innerHTML = filtered.map(product => {
+        const id = String(product.id);
+        const saved =
+          isValidPrice(product.dmart_original_price) &&
+          isValidPrice(product.dmart_discount_price);
+
+        return `
+          <article class="product-card" data-id="${escapeHtml(id)}">
+            <div class="product-head">
+              <div class="image-box">
+                <span class="image-placeholder">Loading</span>
+                <img
+                  class="product-image"
+                  data-cached-image="${escapeHtml(product.image1 || "")}"
+                  alt="${escapeHtml(product.name || "Product")}"
+                />
+              </div>
+
+              <div class="product-info">
+                <span class="product-id">ID: ${escapeHtml(product.id)}</span>
+                <h2 class="product-name">${escapeHtml(product.name || "-")}</h2>
+                <p class="product-telugu">${escapeHtml(product.name_telugu || "-")}</p>
+              </div>
+            </div>
+
+            <div class="meta-grid">
+              <div class="meta-item">
+                <span>Quantity</span>
+                <strong>${escapeHtml(product.quantity ?? "-")}</strong>
+              </div>
+
+              <div class="meta-item">
+                <span>Unit</span>
+                <strong>${escapeHtml(product.unit || "-")}</strong>
+              </div>
+
+              <div class="meta-item" style="grid-column:1/-1">
+                <span>Brand</span>
+                <strong>${escapeHtml(product.brand || "-")}</strong>
+              </div>
+            </div>
+
+            <div class="price-grid">
+              <div class="field">
+                <label>DMart original price</label>
+                <input
+                  class="price-input original-input"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  inputmode="decimal"
+                  placeholder="₹ Original"
+                  value="${priceForInput(product.dmart_original_price)}"
+                  oninput="handlePriceChange('${escapeJs(id)}')"
+                />
+              </div>
+
+              <div class="field">
+                <label>DMart discount price</label>
+                <input
+                  class="price-input discount-input"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  inputmode="decimal"
+                  placeholder="₹ Discount"
+                  value="${priceForInput(product.dmart_discount_price)}"
+                  oninput="handlePriceChange('${escapeJs(id)}')"
+                />
+              </div>
+            </div>
+
+            <div class="action-area">
+              ${
+                saved
+                  ? `<div class="saved-mark">✓ Saved</div>`
+                  : `<button class="save-btn" onclick="saveRow('${escapeJs(id)}')">Save prices</button>`
+              }
+            </div>
+
+            <small class="status-text"></small>
+          </article>
+        `;
+      }).join("");
+
+      loadCachedImages();
+    }
+
+    async function saveRow(productId) {
+      const card = getCard(productId);
+      if (!card) return;
+
+      const originalInput = card.querySelector(".original-input");
+      const discountInput = card.querySelector(".discount-input");
+      const actionArea = card.querySelector(".action-area");
+      const statusText = card.querySelector(".status-text");
+      const saveButton = card.querySelector(".save-btn");
+
+      clearValidation(card);
+
+      const originalPrice = parsePrice(originalInput.value);
+      const discountPrice = parsePrice(discountInput.value);
+
+      if (originalPrice === null || discountPrice === null) {
+        if (originalPrice === null) originalInput.classList.add("invalid");
+        if (discountPrice === null) discountInput.classList.add("invalid");
+        statusText.textContent = "Please fill both price fields.";
+        return;
+      }
+
+      if (discountPrice > originalPrice) {
+        discountInput.classList.add("invalid");
+        statusText.textContent = "Discount price cannot be more than original price.";
+        return;
+      }
+
+      if (saveButton) {
+        saveButton.disabled = true;
+        saveButton.textContent = "Saving...";
+      }
+
+      try {
+        const { error } = await db
+          .from(TABLE_NAME)
+          .update({
+            dmart_original_price: originalPrice,
+            dmart_discount_price: discountPrice
+          })
+          .eq("id", productId);
+
+        if (error) throw error;
+
+        const product = products.find(item => String(item.id) === String(productId));
+
+        if (product) {
+          product.dmart_original_price = originalPrice;
+          product.dmart_discount_price = discountPrice;
+        }
+
+        originalValues.set(String(productId), {
+          original: normalizePrice(originalPrice),
+          discount: normalizePrice(discountPrice)
+        });
+
+        actionArea.innerHTML = `<div class="saved-mark">✓ Saved</div>`;
+        statusText.textContent = "";
+
+        updateSummary();
+        showToast(`Product ${productId} saved`, "success");
+      } catch (error) {
+        console.error(error);
+
+        if (saveButton) {
+          saveButton.disabled = false;
+          saveButton.textContent = "Save prices";
+        }
+
+        statusText.textContent = error.message || "Save failed.";
+        showToast("Price save failed", "error");
+      }
+    }
+
+    function handlePriceChange(productId) {
+      const card = getCard(productId);
+      if (!card) return;
+
+      clearValidation(card);
+
+      const originalValue = normalizePrice(card.querySelector(".original-input").value);
+      const discountValue = normalizePrice(card.querySelector(".discount-input").value);
+      const savedValues = originalValues.get(String(productId)) || {
+        original: "",
+        discount: ""
+      };
+
+      const changed =
+        originalValue !== savedValues.original ||
+        discountValue !== savedValues.discount;
+
+      const actionArea = card.querySelector(".action-area");
+
+      if (changed) {
+        actionArea.innerHTML = `
+          <button class="save-btn" onclick="saveRow('${escapeJs(String(productId))}')">
+            Save prices
+          </button>
+        `;
+      } else if (savedValues.original !== "" && savedValues.discount !== "") {
+        actionArea.innerHTML = `<div class="saved-mark">✓ Saved</div>`;
+      } else {
+        actionArea.innerHTML = `
+          <button class="save-btn" onclick="saveRow('${escapeJs(String(productId))}')">
+            Save prices
+          </button>
+        `;
+      }
+    }
+
+    async function loadCachedImages() {
+      const images = document.querySelectorAll("img[data-cached-image]");
+
+      for (const img of images) {
+        const url = img.dataset.cachedImage;
+        const placeholder = img.parentElement.querySelector(".image-placeholder");
+
+        if (!url) {
+          placeholder.textContent = "No image";
+          continue;
+        }
+
+        try {
+          const objectUrl = await getCachedImageUrl(url);
+          img.src = objectUrl;
+
+          img.onload = () => {
+            img.classList.add("loaded");
+            placeholder.style.display = "none";
+          };
+
+          img.onerror = () => {
+            placeholder.textContent = "Image error";
+          };
+        } catch (error) {
+          img.src = url;
+
+          img.onload = () => {
+            img.classList.add("loaded");
+            placeholder.style.display = "none";
+          };
+
+          img.onerror = () => {
+            placeholder.textContent = "Image error";
+          };
+        }
+      }
+    }
+
+    async function getCachedImageUrl(url) {
+      if (!("caches" in window)) return url;
+
+      const cache = await caches.open(IMAGE_CACHE_NAME);
+      let response = await cache.match(url);
+
+      if (!response) {
+        const networkResponse = await fetch(url, {
+          mode: "cors",
+          cache: "force-cache"
+        });
+
+        if (!networkResponse.ok) {
+          throw new Error("Image load failed");
+        }
+
+        await cache.put(url, networkResponse.clone());
+        response = networkResponse;
+      }
+
+      const blob = await response.blob();
+      return URL.createObjectURL(blob);
+    }
+
+    function updateSummary() {
+      const completed = products.filter(product =>
+        isValidPrice(product.dmart_original_price) &&
+        isValidPrice(product.dmart_discount_price)
+      ).length;
+
+      document.getElementById("totalProducts").textContent = products.length;
+      document.getElementById("completedProducts").textContent = completed;
+      document.getElementById("pendingProducts").textContent = products.length - completed;
+    }
+
+    function showLoading() {
+      productList.innerHTML = `
+        <div class="loading">
+          <div class="spinner"></div>
+          Loading products...
+        </div>
+      `;
+    }
+
+    function getCard(productId) {
+      return productList.querySelector(
+        `.product-card[data-id="${CSS.escape(String(productId))}"]`
+      );
+    }
+
+    function clearValidation(card) {
+      card.querySelectorAll(".price-input").forEach(input =>
+        input.classList.remove("invalid")
+      );
+
+      const statusText = card.querySelector(".status-text");
+      if (statusText) statusText.textContent = "";
+    }
+
+    function isValidPrice(value) {
+      return value !== null &&
+        value !== undefined &&
+        value !== "" &&
+        Number.isFinite(Number(value)) &&
+        Number(value) >= 0;
+    }
+
+    function parsePrice(value) {
+      const trimmed = String(value).trim();
+      if (trimmed === "") return null;
+
+      const number = Number(trimmed);
+      if (!Number.isFinite(number) || number < 0) return null;
+
+      return Number(number.toFixed(2));
+    }
+
+    function normalizePrice(value) {
+      if (value === null || value === undefined || value === "") return "";
+      const number = Number(value);
+      return Number.isFinite(number) ? String(number) : "";
+    }
+
+    function priceForInput(value) {
+      return isValidPrice(value) ? escapeHtml(value) : "";
+    }
+
+    function showToast(message, type = "") {
+      const toast = document.getElementById("toast");
+      toast.textContent = message;
+      toast.className = `toast ${type} show`;
+
+      clearTimeout(showToast.timer);
+      showToast.timer = setTimeout(() => {
+        toast.classList.remove("show");
+      }, 2300);
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    function escapeJs(value) {
+      return String(value)
+        .replaceAll("\\", "\\\\")
+        .replaceAll("'", "\\'");
+    }
+
+    searchInput.addEventListener("input", renderProducts);
+    statusFilter.addEventListener("change", renderProducts);
+    refreshBtn.addEventListener("click", loadProducts);
+
+    loadProducts();
+  </script>
+</body>
+</html>
