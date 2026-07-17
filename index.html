@@ -436,6 +436,190 @@ href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
         height:64px;
       }
     }
+
+
+    .top-actions{
+      display:flex;
+      align-items:center;
+      gap:8px;
+    }
+
+    .add-btn{
+      border:1px solid rgba(255,255,255,.35);
+      background:#2563eb;
+      color:#fff;
+      border-radius:10px;
+      min-height:40px;
+      padding:8px 13px;
+      font-weight:800;
+      cursor:pointer;
+      display:flex;
+      align-items:center;
+      gap:6px;
+    }
+
+    body.sheet-open{
+      overflow:hidden;
+    }
+
+    .sheet-overlay{
+      position:fixed;
+      inset:0;
+      z-index:200;
+      background:rgba(15,23,42,.48);
+      opacity:0;
+      visibility:hidden;
+      transition:opacity .25s ease, visibility .25s ease;
+    }
+
+    .sheet-overlay.open{
+      opacity:1;
+      visibility:visible;
+    }
+
+    .bottom-sheet{
+      position:absolute;
+      left:0;
+      right:0;
+      bottom:0;
+      width:100%;
+      max-width:560px;
+      max-height:90vh;
+      margin:auto;
+      overflow-y:auto;
+      background:#fff;
+      border-radius:22px 22px 0 0;
+      padding:10px 16px calc(16px + env(safe-area-inset-bottom));
+      transform:translateY(105%);
+      transition:transform .28s ease;
+      box-shadow:0 -14px 40px rgba(15,23,42,.18);
+    }
+
+    .sheet-overlay.open .bottom-sheet{
+      transform:translateY(0);
+    }
+
+    .sheet-handle{
+      width:42px;
+      height:5px;
+      margin:0 auto 14px;
+      border-radius:999px;
+      background:#d0d5dd;
+    }
+
+    .sheet-title{
+      margin:0 0 4px;
+      font-size:20px;
+    }
+
+    .sheet-subtitle{
+      margin:0 0 18px;
+      color:var(--muted);
+      font-size:13px;
+    }
+
+    .sheet-field{
+      margin-bottom:13px;
+    }
+
+    .sheet-field label{
+      display:block;
+      margin-bottom:6px;
+      color:#344054;
+      font-size:12px;
+      font-weight:800;
+    }
+
+    .sheet-input{
+      width:100%;
+      min-height:48px;
+      border:1px solid #d0d5dd;
+      border-radius:11px;
+      padding:11px 12px;
+      background:#fff;
+      color:var(--text);
+      font-size:15px;
+      outline:none;
+    }
+
+    .sheet-input:focus{
+      border-color:var(--blue);
+      box-shadow:0 0 0 3px rgba(37,99,235,.1);
+    }
+
+    .sheet-input.invalid{
+      border-color:var(--red);
+      background:#fff7f7;
+    }
+
+    .sheet-price-grid{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:9px;
+    }
+
+    .sheet-error{
+      min-height:18px;
+      margin:2px 0 8px;
+      color:var(--red);
+      font-size:12px;
+      font-weight:700;
+    }
+
+    .sheet-save-btn,
+    .sheet-close-btn{
+      width:100%;
+      min-height:48px;
+      border:0;
+      border-radius:11px;
+      font-size:15px;
+      font-weight:800;
+      cursor:pointer;
+    }
+
+    .sheet-save-btn{
+      background:var(--green);
+      color:#fff;
+    }
+
+    .sheet-save-btn:disabled{
+      opacity:.75;
+      cursor:not-allowed;
+    }
+
+    .sheet-save-btn.saved{
+      background:var(--green-soft);
+      color:var(--green-dark);
+    }
+
+    .button-loader{
+      display:inline-block;
+      width:17px;
+      height:17px;
+      margin-right:7px;
+      vertical-align:-3px;
+      border:2px solid rgba(255,255,255,.45);
+      border-top-color:#fff;
+      border-radius:50%;
+      animation:spin .7s linear infinite;
+    }
+
+    .sheet-close-btn{
+      margin-top:9px;
+      background:#f2f4f7;
+      color:#344054;
+    }
+
+    @media(max-width:390px){
+      .sheet-price-grid{
+        grid-template-columns:1fr;
+      }
+
+      .add-btn{
+        padding:8px 10px;
+      }
+    }
+
   </style>
 </head>
 
@@ -446,9 +630,16 @@ href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
         <h1>CEZOO Price Dashboard</h1>
         <p>DMart price management</p>
       </div>
-<button class="refresh-btn" id="refreshBtn">
-    <i class="fa-solid fa-rotate-right"></i>
-</button>    </div>
+<div class="top-actions">
+        <button class="refresh-btn" id="refreshBtn" aria-label="Refresh products">
+          <i class="fa-solid fa-rotate-right"></i>
+        </button>
+
+        <button class="add-btn" id="addProductBtn" type="button">
+          <i class="fa-solid fa-plus"></i> Add
+        </button>
+      </div>
+    </div>
   </header>
 
   <main class="page">
@@ -492,10 +683,50 @@ href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
 
   <div id="toast" class="toast"></div>
 
+  <div id="addProductSheet" class="sheet-overlay" aria-hidden="true">
+    <section class="bottom-sheet" role="dialog" aria-modal="true" aria-labelledby="addProductTitle">
+      <div class="sheet-handle"></div>
+
+      <h2 class="sheet-title" id="addProductTitle">Add new product</h2>
+      <p class="sheet-subtitle">Enter the product and DMart price details.</p>
+
+      <form id="addProductForm" novalidate>
+        <div class="sheet-field">
+          <label for="newProductName">Product name</label>
+          <input id="newProductName" class="sheet-input" type="text" placeholder="Enter product name" autocomplete="off" />
+        </div>
+
+        <div class="sheet-field">
+          <label for="newBrandName">Brand name</label>
+          <input id="newBrandName" class="sheet-input" type="text" placeholder="Enter brand name" autocomplete="off" />
+        </div>
+
+        <div class="sheet-price-grid">
+          <div class="sheet-field">
+            <label for="newOriginalPrice">DMart original price</label>
+            <input id="newOriginalPrice" class="sheet-input" type="number" min="0" step="0.01" inputmode="decimal" placeholder="₹ Original" />
+          </div>
+
+          <div class="sheet-field">
+            <label for="newDiscountPrice">DMart discount price</label>
+            <input id="newDiscountPrice" class="sheet-input" type="number" min="0" step="0.01" inputmode="decimal" placeholder="₹ Discount" />
+          </div>
+        </div>
+
+        <div id="addProductError" class="sheet-error"></div>
+
+        <button id="saveNewProductBtn" class="sheet-save-btn" type="submit">Save product</button>
+        <button id="closeAddProductBtn" class="sheet-close-btn" type="button">Close</button>
+      </form>
+    </section>
+  </div>
+
+
   <script>
     const SUPABASE_URL = "https://mglyaebackjtwbimvokm.supabase.co";
     const SUPABASE_ANON_KEY = "sb_publishable_qMli5WhM2pMnT6_oUsFe4Q_Fzq_-YuB";
     const TABLE_NAME = "cezoogroceries";
+    const ADD_PRODUCTS_TABLE = "addd_products";
     const IMAGE_CACHE_NAME = "cezoo-product-images-v1";
 
     const { createClient } = supabase;
@@ -505,6 +736,16 @@ href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
     const searchInput = document.getElementById("searchInput");
     const statusFilter = document.getElementById("statusFilter");
     const refreshBtn = document.getElementById("refreshBtn");
+    const addProductBtn = document.getElementById("addProductBtn");
+    const addProductSheet = document.getElementById("addProductSheet");
+    const addProductForm = document.getElementById("addProductForm");
+    const closeAddProductBtn = document.getElementById("closeAddProductBtn");
+    const saveNewProductBtn = document.getElementById("saveNewProductBtn");
+    const addProductError = document.getElementById("addProductError");
+    const newProductName = document.getElementById("newProductName");
+    const newBrandName = document.getElementById("newBrandName");
+    const newOriginalPrice = document.getElementById("newOriginalPrice");
+    const newDiscountPrice = document.getElementById("newDiscountPrice");
 
     let products = [];
     let originalValues = new Map();
@@ -935,9 +1176,157 @@ href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
         .replaceAll("'", "\\'");
     }
 
+
+
+    function openAddProductSheet() {
+      resetAddProductForm();
+      addProductSheet.classList.add("open");
+      addProductSheet.setAttribute("aria-hidden", "false");
+      document.body.classList.add("sheet-open");
+      setTimeout(() => newProductName.focus(), 280);
+    }
+
+    function closeAddProductSheet() {
+      addProductSheet.classList.remove("open");
+      addProductSheet.setAttribute("aria-hidden", "true");
+      document.body.classList.remove("sheet-open");
+      resetAddProductForm();
+    }
+
+    function resetAddProductForm() {
+      addProductForm.reset();
+      addProductError.textContent = "";
+      addProductForm.querySelectorAll(".sheet-input").forEach(input => {
+        input.classList.remove("invalid");
+        input.disabled = false;
+      });
+      saveNewProductBtn.disabled = false;
+      saveNewProductBtn.classList.remove("saved");
+      saveNewProductBtn.innerHTML = "Save product";
+      closeAddProductBtn.disabled = false;
+    }
+
+    async function getNextProductId() {
+      const { data, error } = await db
+        .from(ADD_PRODUCTS_TABLE)
+        .select("product_id")
+        .order("product_id", { ascending: false })
+        .limit(1);
+
+      if (error) throw error;
+      return data && data.length ? Number(data[0].product_id) + 1 : 1;
+    }
+
+    async function saveNewProduct(event) {
+      event.preventDefault();
+
+      addProductError.textContent = "";
+      addProductForm.querySelectorAll(".sheet-input").forEach(input =>
+        input.classList.remove("invalid")
+      );
+
+      const productName = newProductName.value.trim();
+      const brandName = newBrandName.value.trim();
+      const originalPrice = parsePrice(newOriginalPrice.value);
+      const discountPrice = parsePrice(newDiscountPrice.value);
+
+      let invalid = false;
+
+      if (!productName) {
+        newProductName.classList.add("invalid");
+        invalid = true;
+      }
+
+      if (!brandName) {
+        newBrandName.classList.add("invalid");
+        invalid = true;
+      }
+
+      if (originalPrice === null) {
+        newOriginalPrice.classList.add("invalid");
+        invalid = true;
+      }
+
+      if (discountPrice === null) {
+        newDiscountPrice.classList.add("invalid");
+        invalid = true;
+      }
+
+      if (invalid) {
+        addProductError.textContent = "Please fill all fields correctly.";
+        return;
+      }
+
+      if (discountPrice > originalPrice) {
+        newDiscountPrice.classList.add("invalid");
+        addProductError.textContent = "Discount price cannot be more than original price.";
+        return;
+      }
+
+      saveNewProductBtn.disabled = true;
+      closeAddProductBtn.disabled = true;
+      addProductForm.querySelectorAll(".sheet-input").forEach(input => input.disabled = true);
+      saveNewProductBtn.innerHTML = '<span class="button-loader"></span>Saving...';
+
+      try {
+        const productId = await getNextProductId();
+
+        const { error } = await db
+          .from(ADD_PRODUCTS_TABLE)
+          .insert({
+            product_id: productId,
+            product_name: productName,
+            brand: brandName,
+            dmart_original_price: originalPrice,
+            dmart_discount_price: discountPrice,
+            updated_at: new Date().toISOString()
+          });
+
+        if (error) throw error;
+
+        saveNewProductBtn.classList.add("saved");
+        saveNewProductBtn.innerHTML = '<i class="fa-solid fa-check"></i> Saved';
+        showToast("New product saved", "success");
+
+        setTimeout(() => {
+          addProductForm.reset();
+          addProductForm.querySelectorAll(".sheet-input").forEach(input => {
+            input.disabled = false;
+            input.classList.remove("invalid");
+          });
+          closeAddProductBtn.disabled = false;
+          saveNewProductBtn.disabled = false;
+          saveNewProductBtn.classList.remove("saved");
+          saveNewProductBtn.innerHTML = "Save product";
+          newProductName.focus();
+        }, 1000);
+      } catch (error) {
+        console.error(error);
+        addProductError.textContent = error.message || "Unable to save product.";
+        saveNewProductBtn.disabled = false;
+        closeAddProductBtn.disabled = false;
+        addProductForm.querySelectorAll(".sheet-input").forEach(input => input.disabled = false);
+        saveNewProductBtn.innerHTML = "Save product";
+        showToast("Product save failed", "error");
+      }
+    }
+
     searchInput.addEventListener("input", renderProducts);
     statusFilter.addEventListener("change", renderProducts);
     refreshBtn.addEventListener("click", loadProducts);
+    addProductBtn.addEventListener("click", openAddProductSheet);
+    closeAddProductBtn.addEventListener("click", closeAddProductSheet);
+    addProductForm.addEventListener("submit", saveNewProduct);
+
+    addProductSheet.addEventListener("click", event => {
+      if (event.target === addProductSheet) closeAddProductSheet();
+    });
+
+    document.addEventListener("keydown", event => {
+      if (event.key === "Escape" && addProductSheet.classList.contains("open")) {
+        closeAddProductSheet();
+      }
+    });
 
     loadProducts();
   </script>
